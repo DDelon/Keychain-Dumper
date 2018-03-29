@@ -215,6 +215,7 @@ void printInternetPassword(NSDictionary *passwordItem) {
 
 void printCertificate(NSDictionary *certificateItem) {
 	SecCertificateRef certificate = (SecCertificateRef)[certificateItem objectForKey:(id)kSecValueRef];
+	CFDataRef certificateData = SecCertificateCopyData(certificate);
 
 	CFStringRef summary;
 	summary = SecCertificateCopySubjectSummary(certificate);
@@ -227,6 +228,7 @@ void printCertificate(NSDictionary *certificateItem) {
 	printToStdOut(@"Serial Number: %@\n", [certificateItem objectForKey:(id)kSecAttrSerialNumber]);
 	printToStdOut(@"Subject Key ID: %@\n", [certificateItem objectForKey:(id)kSecAttrSubjectKeyID]);
 	printToStdOut(@"Subject Key Hash: %@\n\n", [certificateItem objectForKey:(id)kSecAttrPublicKeyHash]);
+	printToStdOut(@"Certificate: %@\n", [NSString stringWithFormat:@"-----BEGIN CERTIFICATE-----\n%@\n-----END CERTIFICATE-----\n", [(__bridge NSData*)certificateData base64EncodedStringWithOptions:1]]);
 	
 }
 
@@ -271,8 +273,6 @@ void printIdentity(NSDictionary *identityItem) {
 	SecIdentityCopyCertificate(identity, &certificate);
 	SecIdentityCopyPrivateKey(identity, &privateKey);
 
-	CFDataRef certificateData = SecCertificateCopyData(certificate);
-	
 	CFDictionaryRef (*SecKeyCopyAttributeDictionary)(SecKeyRef key);
 	SecKeyCopyAttributeDictionary = dlsym(RTLD_DEFAULT ,"SecKeyCopyAttributeDictionary");
 	CFDictionaryRef dict = SecKeyCopyAttributeDictionary(privateKey);
@@ -282,7 +282,6 @@ void printIdentity(NSDictionary *identityItem) {
 	[identityItemWithCertificate setObject:(id)certificate forKey:(id)kSecValueRef];
 	printToStdOut(@"Identity\n");
 	printToStdOut(@"--------\n");
-	printToStdOut(@"Certificate: %@\n", [NSString stringWithFormat:@"-----BEGIN CERTIFICATE-----\n%@\n-----END CERTIFICATE-----\n", [(__bridge NSData*)certificateData base64EncodedStringWithOptions:1]]);
 	printToStdOut(@"PrivateKey: %@\n", [NSString stringWithFormat:@"-----BEGIN RSA PRIVATE KEY-----\n%@\n-----END RSA PRIVATE KEY-----\n", [(__bridge NSData*)privateKeyData base64EncodedStringWithOptions:1]]);
 	printCertificate(identityItemWithCertificate);
 	printKey(identityItemWithCertificate);
