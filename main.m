@@ -31,6 +31,7 @@
 #import <UIKit/UIKit.h>
 #import <Security/Security.h>
 #import "sqlite3.h"
+#include <dlfcn.h>
 
 void printToStdOut(NSString *format, ...) {
     va_list args;
@@ -265,12 +266,24 @@ void printKey(NSDictionary *keyItem) {
 void printIdentity(NSDictionary *identityItem) {
 	SecIdentityRef identity = (SecIdentityRef)[identityItem objectForKey:(id)kSecValueRef];
 	SecCertificateRef certificate;
+	SecKeyRef privateKey;
 
 	SecIdentityCopyCertificate(identity, &certificate);
+	SecIdentityCopyPrivateKey(identity, &privateKey);
+
+	CFDataRef certificateData = SecCertificateCopyData(certificate);
+	
+	CFDictionaryRef (*SecKeyCopyAttributeDictionary)(SecKeyRef key);
+	SecKeyCopyAttributeDictionary = dlsym(RTLD_DEFAULT ,"SecKeyCopyAttributeDictionary");
+	CFDictionaryRef dict = SecKeyCopyAttributeDictionary(privateKey);
+	CFDataRef privateKeyData = CFDictionaryGetValue(dict, kSecValueData);
+
 	NSMutableDictionary *identityItemWithCertificate = [identityItem mutableCopy];
 	[identityItemWithCertificate setObject:(id)certificate forKey:(id)kSecValueRef];
 	printToStdOut(@"Identity\n");
 	printToStdOut(@"--------\n");
+	printToStdOut(@"Certificate: %@\n", [NSString stringWithFormat:@"-----BEGIN CERTIFICATE-----\n%@\n-----END CERTIFICATE-----\n", [(__bridge NSData*)certificateData base64EncodedStringWithOptions:1]]);
+	printToStdOut(@"PrivateKey: %@\n", [NSString stringWithFormat:@"-----BEGIN RSA PRIVATE KEY-----\n%@\n-----END RSA PRIVATE KEY-----\n", [(__bridge NSData*)privateKeyData base64EncodedStringWithOptions:1]]);
 	printCertificate(identityItemWithCertificate);
 	printKey(identityItemWithCertificate);
 	[identityItemWithCertificate release];
